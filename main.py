@@ -8,8 +8,9 @@ env = gym.make("CarRacing-v0")
 low = env.observation_space.low
 high = env.observation_space.high
 
+
 def sigmoid(x):
-  return 1 / (1 + np.exp(-x))
+    return 1 / (1 + np.exp(-x))
 
 
 class critic(tf.keras.Model):
@@ -108,6 +109,8 @@ class agent():
 
 def test_reward(env):
     total_reward = 0
+    env.reset()
+    env.render()
     car_pos = np.array(env.car.hull.position).reshape((1, 2))
     distance_to_tiles = tuple(np.sort(np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)))
     state = env.car.hull.angle, env.car.hull.angularVeliocity, env.car.hull.position[0], env.car.hull.position[1], \
@@ -116,7 +119,9 @@ def test_reward(env):
     done = False
     while not done:
         action = np.argmax(agentoo7.actor(np.array([state])).numpy())
+        env.render()
         _, reward, done, _ = env.step(action)
+        env.render()
         car_pos = np.array(env.car.hull.position).reshape((1, 2))
         distance_to_tiles = tuple(np.sort(np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)))
         state = env.car.hull.angle, env.car.hull.angularVeliocity, env.car.hull.position[0], env.car.hull.position[
@@ -159,7 +164,8 @@ for s in range(steps):
         break
 
     done = False
-    duh = env.reset()
+    env.reset()
+    env.render()
     car_pos = np.array(env.car.hull.position).reshape((1, 2))
     distance_to_tiles = tuple(np.sort(np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)))
     state = env.car.hull.angle, env.car.hull.angularVelocity, env.car.hull.position[0], env.car.hull.position[
@@ -177,7 +183,10 @@ for s in range(steps):
     for e in range(128):
         action = agentoo7.act(state)
         value = agentoo7.critic(np.array([state])).numpy()
+        print(action)
+        env.render()
         _, reward, done, _ = env.step(action)
+        env.render()
         car_pos = np.array(env.car.hull.position).reshape((1, 2))
         distance_to_tiles = tuple(np.sort(np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)))
         next_state = env.car.hull.angle, env.car.hull.angularVeliocity, env.car.hull.position[0], env.car.hull.position[
