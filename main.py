@@ -8,11 +8,14 @@ env = gym.make("CarRacing-v0")
 low = env.observation_space.low
 high = env.observation_space.high
 
+def sigmoid(x):
+  return 1 / (1 + np.exp(-x))
+
 
 class critic(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(7, activation='relu')
+        self.d1 = tf.keras.layers.Dense(16, activation='relu')
         self.v = tf.keras.layers.Dense(1, activation=None)
 
     def call(self, input_data):
@@ -24,7 +27,7 @@ class critic(tf.keras.Model):
 class actor(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(7, activation='relu')
+        self.d1 = tf.keras.layers.Dense(16, activation='relu')
         self.a = tf.keras.layers.Dense(3, activation='softmax')
 
     def call(self, input_data):
@@ -48,9 +51,8 @@ class agent():
         prob = self.actor(np.array([state]))
         prob = prob.numpy()
         dist = tfp.distributions.Categorical(probs=prob, dtype=tf.float32)
-        action = dist.sample()
-        print(action)
-        return int(action)
+        action = sigmoid(np.array([dist.sample(), np.abs(dist.sample()), np.abs(dist.sample())]))
+        return action
 
     def actor_loss(self, probs, actions, adv, old_probs, closs):
         probability = probs
@@ -107,15 +109,19 @@ class agent():
 def test_reward(env):
     total_reward = 0
     car_pos = np.array(env.car.hull.position).reshape((1, 2))
-    distance_to_tiles = np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)
+    distance_to_tiles = tuple(np.sort(np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)))
     state = env.car.hull.angle, env.car.hull.angularVeliocity, env.car.hull.position[0], env.car.hull.position[1], \
-            env.car.hull.linearVelocity[0], env.car.hull.linearVelocity[1], distance_to_tiles
+            env.car.hull.linearVelocity[0], env.car.hull.linearVelocity[1]
+    state = state + distance_to_tiles[0:10]
     done = False
     while not done:
         action = np.argmax(agentoo7.actor(np.array([state])).numpy())
         _, reward, done, _ = env.step(action)
+        car_pos = np.array(env.car.hull.position).reshape((1, 2))
+        distance_to_tiles = tuple(np.sort(np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)))
         state = env.car.hull.angle, env.car.hull.angularVeliocity, env.car.hull.position[0], env.car.hull.position[
-            1], env.car.hull.linearVelocity[0], env.car.hull.linearVelocity[1], distance_to_tiles
+            1], env.car.hull.linearVelocity[0], env.car.hull.linearVelocity[1]
+        state = state + distance_to_tiles[0:10]
         total_reward += reward
 
     return total_reward
@@ -155,9 +161,10 @@ for s in range(steps):
     done = False
     duh = env.reset()
     car_pos = np.array(env.car.hull.position).reshape((1, 2))
-    distance_to_tiles = np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)
-    state = env.car.hull.angle, env.car.hull.angularVeliocity, env.car.hull.position[0], env.car.hull.position[
-        1], env.car.hull.linearVelocity[0], env.car.hull.linearVelocity[1], distance_to_tiles
+    distance_to_tiles = tuple(np.sort(np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)))
+    state = env.car.hull.angle, env.car.hull.angularVelocity, env.car.hull.position[0], env.car.hull.position[
+        1], env.car.hull.linearVelocity[0], env.car.hull.linearVelocity[1]
+    state = state + distance_to_tiles[0:10]
     all_aloss = []
     all_closs = []
     rewards = []
@@ -166,15 +173,17 @@ for s in range(steps):
     probs = []
     dones = []
     values = []
-    print("new episod")
+    print("new episode")
     for e in range(128):
-        car_pos = np.array(env.car.hull.position).reshape((1, 2))
-        distance_to_tiles = np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)
         action = agentoo7.act(state)
         value = agentoo7.critic(np.array([state])).numpy()
         _, reward, done, _ = env.step(action)
+        car_pos = np.array(env.car.hull.position).reshape((1, 2))
+        distance_to_tiles = tuple(np.sort(np.linalg.norm(car_pos - np.array(env.track)[:, 2:], ord=2, axis=1)))
         next_state = env.car.hull.angle, env.car.hull.angularVeliocity, env.car.hull.position[0], env.car.hull.position[
-            1], env.car.hull.linearVelocity[0], env.car.hull.linearVelocity[1], distance_to_tiles
+            1], env.car.hull.linearVelocity[0], env.car.hull.linearVelocity[1]
+        next_state = next_state + distance_to_tiles[0:10]
+        print(len(state))
         dones.append(1 - done)
         rewards.append(reward)
         states.append(state)
